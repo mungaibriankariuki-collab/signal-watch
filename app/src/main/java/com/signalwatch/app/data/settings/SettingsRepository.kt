@@ -28,6 +28,8 @@ enum class TrustLevel(val label: String) {
 data class Settings(
     val handle: String = "",
     val channelId: String? = null,
+    /** The channel's uploads playlist ("UU..."), cached alongside [channelId]. */
+    val uploadsPlaylistId: String? = null,
     val channelTitle: String? = null,
     val channelThumbUrl: String? = null,
     val goLiveAlert: Boolean = true,
@@ -62,11 +64,17 @@ class SettingsRepository @Inject constructor(
 
     suspend fun snapshot(): Settings = current.value ?: settings.first()
 
-    suspend fun setChannel(handle: String, id: String, title: String, thumbUrl: String?) = edit {
+    suspend fun setChannel(handle: String, id: String, title: String, thumbUrl: String?, uploadsPlaylistId: String?) = edit {
         it[HANDLE] = handle
         it[CHANNEL_ID] = id
         it[CHANNEL_TITLE] = title
         if (thumbUrl != null) it[CHANNEL_THUMB] = thumbUrl else it.remove(CHANNEL_THUMB)
+        if (uploadsPlaylistId != null) it[UPLOADS_ID] = uploadsPlaylistId else it.remove(UPLOADS_ID)
+    }
+
+    /** For channels saved before the uploads playlist was cached. Ignored if the channel changed meanwhile. */
+    suspend fun setUploadsPlaylist(channelId: String, uploadsPlaylistId: String) = edit {
+        if (it[CHANNEL_ID] == channelId) it[UPLOADS_ID] = uploadsPlaylistId
     }
 
     suspend fun setGoLiveAlert(on: Boolean) = edit { it[GO_LIVE] = on }
@@ -91,6 +99,7 @@ class SettingsRepository @Inject constructor(
     private fun Preferences.toSettings() = Settings(
         handle = this[HANDLE].orEmpty(),
         channelId = this[CHANNEL_ID],
+        uploadsPlaylistId = this[UPLOADS_ID],
         channelTitle = this[CHANNEL_TITLE],
         channelThumbUrl = this[CHANNEL_THUMB],
         goLiveAlert = this[GO_LIVE] ?: true,
@@ -107,6 +116,7 @@ class SettingsRepository @Inject constructor(
     private companion object {
         val HANDLE = stringPreferencesKey("handle")
         val CHANNEL_ID = stringPreferencesKey("channel_id")
+        val UPLOADS_ID = stringPreferencesKey("uploads_playlist_id")
         val CHANNEL_TITLE = stringPreferencesKey("channel_title")
         val CHANNEL_THUMB = stringPreferencesKey("channel_thumb")
         val GO_LIVE = booleanPreferencesKey("go_live_alert")

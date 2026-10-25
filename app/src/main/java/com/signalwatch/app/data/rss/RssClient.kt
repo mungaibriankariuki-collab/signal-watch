@@ -1,5 +1,6 @@
 package com.signalwatch.app.data.rss
 
+import android.util.Log
 import android.util.Xml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,11 +17,11 @@ import javax.inject.Singleton
 class RssClient @Inject constructor(private val client: OkHttpClient) {
 
     suspend fun latestVideoIds(channelId: String): List<String> = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("https://www.youtube.com/feeds/videos.xml?channel_id=$channelId")
-            .build()
+        val url = "https://www.youtube.com/feeds/videos.xml?channel_id=$channelId"
+        Log.d(TAG, "GET $url")
+        val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Channel feed returned HTTP ${response.code}")
+            if (!response.isSuccessful) throw FeedHttpException(response.code)
             val body = response.body ?: throw IOException("Empty channel feed")
             parseVideoIds(body.byteStream())
         }
@@ -37,4 +38,11 @@ class RssClient @Inject constructor(private val client: OkHttpClient) {
         }
         return ids
     }
+
+    private companion object {
+        const val TAG = "RssClient"
+    }
 }
+
+/** The feed answered, but with an error status: YouTube's problem, not a lost connection. */
+class FeedHttpException(val code: Int) : IOException("Channel feed returned HTTP $code")

@@ -6,7 +6,29 @@ import kotlinx.serialization.Serializable
 data class ChannelListResponse(val items: List<ChannelItem> = emptyList())
 
 @Serializable
-data class ChannelItem(val id: String, val snippet: ChannelSnippet? = null)
+data class ChannelItem(
+    val id: String,
+    val snippet: ChannelSnippet? = null,
+    val contentDetails: ChannelContentDetails? = null,
+)
+
+@Serializable
+data class ChannelContentDetails(val relatedPlaylists: RelatedPlaylists? = null)
+
+@Serializable
+data class RelatedPlaylists(
+    /** The channel's uploads playlist ("UU..."); live and upcoming broadcasts appear in it too. */
+    val uploads: String? = null,
+)
+
+@Serializable
+data class PlaylistItemListResponse(val items: List<PlaylistItem> = emptyList())
+
+@Serializable
+data class PlaylistItem(val contentDetails: PlaylistItemContentDetails? = null)
+
+@Serializable
+data class PlaylistItemContentDetails(val videoId: String? = null)
 
 @Serializable
 data class ChannelSnippet(

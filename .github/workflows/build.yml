@@ -26,6 +26,9 @@ jobs:
       - name: Unit tests (SignalParser)
         run: gradle :signal-parser:test --no-daemon --stacktrace
 
+      - name: Unit tests (app)
+        run: gradle :app:testReleaseUnitTest --no-daemon --stacktrace
+
       - name: Restore signing key and API key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

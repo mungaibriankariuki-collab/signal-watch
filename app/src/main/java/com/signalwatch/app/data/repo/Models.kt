@@ -2,7 +2,7 @@ package com.signalwatch.app.data.repo
 
 import java.time.Instant
 
-data class ChannelInfo(val id: String, val title: String, val thumbUrl: String?)
+data class ChannelInfo(val id: String, val title: String, val thumbUrl: String?, val uploadsPlaylistId: String?)
 
 data class LiveVideo(
     val videoId: String,

@@ -9,7 +9,7 @@ interface YouTubeApi {
     @GET("channels")
     suspend fun channelsByHandle(
         @Query("forHandle") handle: String,
-        @Query("part") part: String = "snippet",
+        @Query("part") part: String = "snippet,contentDetails",
     ): ChannelListResponse
 
     @GET("channels")
@@ -17,6 +17,14 @@ interface YouTubeApi {
         @Query("id") id: String,
         @Query("part") part: String = "snippet",
     ): ChannelListResponse
+
+    /** Newest first. Used on the uploads playlist for the live check. */
+    @GET("playlistItems")
+    suspend fun playlistItems(
+        @Query("playlistId") playlistId: String,
+        @Query("part") part: String = "contentDetails",
+        @Query("maxResults") maxResults: Int = 5,
+    ): PlaylistItemListResponse
 
     @GET("videos")
     suspend fun videos(

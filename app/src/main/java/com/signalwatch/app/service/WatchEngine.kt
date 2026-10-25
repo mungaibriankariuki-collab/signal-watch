@@ -1,7 +1,9 @@
 package com.signalwatch.app.service
 
+import android.util.Log
 import com.signalwatch.app.data.api.ApiException
 import com.signalwatch.app.data.quota.QuotaTracker
+import com.signalwatch.app.data.rss.FeedHttpException
 import com.signalwatch.app.data.repo.CaughtSignal
 import com.signalwatch.app.data.repo.ChatItem
 import com.signalwatch.app.data.repo.LiveVideo
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
 import java.time.Duration
 import java.time.Instant
 import java.util.Locale
@@ -126,15 +129,21 @@ class WatchEngine @Inject constructor(
             }
             val previous = _state.value as? WatchState.Offline
             val live = try {
-                repo.findLiveVideo(channelId)
+                val uploadsId = s.uploadsPlaylistId
+                    ?: repo.uploadsPlaylistId(channelId).also { settingsRepo.setUploadsPlaylist(channelId, it) }
+                repo.findLiveVideo(channelId, uploadsId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Log.w(TAG, "live check failed", e)
+                failures++
                 _state.value = WatchState.Offline(previous?.lastCheck, describe(e))
                 if (e is ApiException && e.isQuotaExceeded) sleep(QuotaTracker.millisUntilReset())
-                else sleep(s.intervalSec * 1000L)
+                else sleep(maxOf(s.intervalSec * 1000L, backoffMs(failures)))
                 continue
             }
+            // A successful check: the next Offline state carries no message, which clears the error.
+            failures = 0
             if (live == null) {
                 _state.value = WatchState.Offline(lastCheck = Instant.now())
                 sleep(s.intervalSec * 1000L)
@@ -303,13 +312,29 @@ class WatchEngine @Inject constructor(
         withTimeoutOrNull(ms) { wake.receive() }
     }
 
+    /** Failed checks in a row; drives [backoffMs]. */
+    private var failures = 0
+
+    /** Slow down after repeated failures: 1 min, then 2 min, then 5 min. */
+    private fun backoffMs(failures: Int): Long = when (failures) {
+        1 -> 60_000L
+        2 -> 120_000L
+        else -> 300_000L
+    }
+
     private fun describe(e: Exception): String = when {
-        e is ApiException && e.isQuotaExceeded -> "Daily API quota used up. Resumes after midnight Pacific."
-        e is ApiException -> e.message ?: "YouTube API error"
-        else -> "Can't reach YouTube: ${e.message ?: e.javaClass.simpleName}"
+        e is ApiException && e.isQuotaExceeded -> "Quota exceeded"
+        e is ApiException && e.reason == "noApiKey" -> e.message ?: "No API key"
+        e is ApiException && (e.httpCode == 404 || e.reason in NOT_FOUND_REASONS) -> "Channel not found"
+        e is ApiException -> "YouTube error (${e.httpCode})"
+        e is FeedHttpException -> "YouTube error (${e.code})"
+        e is IOException -> "No internet"
+        else -> "YouTube error (${e.javaClass.simpleName})"
     }
 
     private companion object {
+        const val TAG = "WatchEngine"
+        val NOT_FOUND_REASONS = setOf("notFound", "channelNotFound", "playlistNotFound")
         const val MIN_CHAT_POLL_MS = 8_000L
         const val MAX_CHAT_ITEMS = 500
         val BACKLOG_ALERT_WINDOW: Duration = Duration.ofMinutes(2)

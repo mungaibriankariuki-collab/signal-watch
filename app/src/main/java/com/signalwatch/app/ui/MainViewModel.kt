@@ -52,7 +52,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _handleStatus.value = try {
                 val channel = repo.resolveHandle(handle)
-                settingsRepo.setChannel(handle, channel.id, channel.title, channel.thumbUrl)
+                settingsRepo.setChannel(handle, channel.id, channel.title, channel.thumbUrl, channel.uploadsPlaylistId)
                 engine.wakeUp()
                 HandleStatus.Resolved(channel.title)
             } catch (e: ApiException) {

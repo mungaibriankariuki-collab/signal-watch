@@ -2,7 +2,7 @@
 
 A personal Android app (sideloaded, not published) that watches one YouTube trader's channel:
 
-1. **Go-live alert**: polls the channel's free RSS feed, confirms with `videos.list` (1 unit), and notifies you when a stream starts.
+1. **Go-live alert**: checks the channel's uploads playlist (`playlistItems.list`, 1 unit), confirms with `videos.list` (1 unit), and notifies you when a stream starts. The RSS feed is a fallback only.
 2. **Stream player**: the official YouTube IFrame embed (android-youtube-player). Nothing is downloaded or recorded.
 3. **Built-in chat**: read-only live chat, owner/mod badges, "All chat / Signals only" filter.
 4. **Signal catcher**: parses trade calls posted by the owner (and optionally moderators).
@@ -14,7 +14,7 @@ A personal Android app (sideloaded, not published) that watches one YouTube trad
 signal-parser/        pure Kotlin/JVM module (no Android): SignalParser, SignalDeduplicator + unit tests
 app/src/main/java/com/signalwatch/app/
   data/api            Retrofit YouTube Data API v3, DTOs, API-key interceptor
-  data/rss            channel RSS feed (no quota)
+  data/rss            channel RSS feed (fallback for the live check, no quota)
   data/settings       DataStore settings
   data/quota          daily quota counter (resets at midnight Pacific)
   data/repo           YouTubeRepository + models
@@ -89,13 +89,16 @@ Costs from the [official quota table](https://developers.google.com/youtube/v3/d
 | Call | Units |
 |---|---|
 | `channels.list` | 1 |
+| `playlistItems.list` | 1 |
 | `videos.list` | 1 |
 | `liveChatMessages.list` | 5 |
 
 The default allowance is 10,000 units/day. `search.list` is never used.
 
-- **Offline**: the RSS feed is free. `videos.list` only runs for the newest 5 videos that aren't already known to be finished, so most checks cost 0 units.
-- **Live**: chat is polled at the server's `pollingIntervalMillis`, but never faster than every 8 s. At the floor that's ~450 calls an hour, about 2,250 units, so a full quota covers roughly 4 hours of chat a day.
+- **Offline**: each check reads the 5 newest items of the uploads playlist (1 unit) and asks `videos.list` about the ones not already known to be finished (1 unit). That's about 2 units a check, or 2,880 units a day at the default 60 s interval.
+- **Live**: offline checks pause while a stream is open. Chat is polled at the server's `pollingIntervalMillis`, but never faster than every 8 s. At that floor it's ~450 calls an hour, about 2,250 units.
+- **Together**, at 60 s with a 2-hour stream: ~7,100 units. With a 3-hour stream: ~9,300 units, which is close to the limit. Streams longer than about 3¼ hours at the 8 s floor can run out. A longer check interval leaves more room.
+- **Errors**: a failed check backs off to 1, then 2, then 5 minutes. The status card says *Quota exceeded*, *No internet*, *Channel not found* or *YouTube error (code)*, and clears after the next successful check.
 - Settings → **API usage today** shows the app's own running count. It's an estimate and resets at midnight Pacific.
 
 ## Signal rules
