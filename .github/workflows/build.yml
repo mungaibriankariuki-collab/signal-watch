@@ -27,7 +27,7 @@ jobs:
         run: gradle :signal-parser:test --no-daemon --stacktrace
 
       - name: Unit tests (app)
-        run: gradle :app:testReleaseUnitTest --no-daemon --stacktrace
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
 
       - name: Restore signing key and API key
         env:
