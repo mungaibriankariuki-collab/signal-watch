@@ -78,6 +78,8 @@ The handle is resolved once with `channels.list?forHandle=` (1 unit). The channe
 - **Full-screen alerts** (Android 14+): needed for the alert to appear over the lock screen. If it's off, the Offline screen shows a warning. Tap it (or Settings → **Full-screen alerts**) to open the system page and allow it.
 - **Battery**: set Signal Watch to **Unrestricted** (long-press the app icon → App info → Battery). Otherwise Doze can pause polling while the screen is off.
 
+Watching restarts by itself after a reboot or an app update, as long as Go-live alert or Signal alerts is on. After a reboot it starts once you unlock the phone for the first time.
+
 Then tap **Send test alert**. It sends a fake owner signal through the whole pipeline (parser → de-dup → alarm → full-screen Alert screen).
 
 ## Quota
