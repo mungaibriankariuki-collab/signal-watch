@@ -126,6 +126,7 @@ private fun AppRoot(notifier: Notifier, vm: MainViewModel = hiltViewModel()) {
     val latestSignal by vm.latestSignal.collectAsStateWithLifecycle()
     val quotaUsed by vm.quotaUsed.collectAsStateWithLifecycle()
     val handleStatus by vm.handleStatus.collectAsStateWithLifecycle()
+    val embeddable by vm.embeddable.collectAsStateWithLifecycle()
 
     // Re-read permission state whenever we come back from a settings page.
     var resumeTick by remember { mutableIntStateOf(0) }
@@ -213,15 +214,21 @@ private fun AppRoot(notifier: Notifier, vm: MainViewModel = hiltViewModel()) {
     Box(Modifier.fillMaxSize().background(SW.Background)) {
         Box(Modifier.fillMaxSize().safeDrawingPadding()) {
             when (val st = state) {
-                is WatchState.Live -> LiveScreen(
-                    settings = s,
-                    video = st.video,
-                    chat = chat,
-                    latestSignal = latestSignal,
-                    onToggleSignalAlerts = { vm.setSignalAlerts(!s.signalAlerts) },
-                    onEnterFullscreen = { view, exit -> setFullscreen(view, exit) },
-                    onExitFullscreen = { setFullscreen(null, null) },
-                )
+                is WatchState.Live -> {
+                    LaunchedEffect(st.video.videoId) {
+                        if (!st.video.simulated) vm.checkEmbed(st.video.videoId)
+                    }
+                    LiveScreen(
+                        settings = s,
+                        video = st.video,
+                        chat = chat,
+                        latestSignal = latestSignal,
+                        embeddable = embeddable[st.video.videoId],
+                        onToggleSignalAlerts = { vm.setSignalAlerts(!s.signalAlerts) },
+                        onEnterFullscreen = { view, exit -> setFullscreen(view, exit) },
+                        onExitFullscreen = { setFullscreen(null, null) },
+                    )
+                }
                 is WatchState.Offline -> OfflineScreen(
                     settings = s,
                     state = st,

@@ -26,6 +26,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
+        buildConfigField("String", "YT_PLAYER_VERSION", "\"${libs.versions.ytPlayer.get()}\"")
     }
 
     val keystorePassword = System.getenv("KEYSTORE_PASSWORD")

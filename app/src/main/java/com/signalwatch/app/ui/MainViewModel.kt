@@ -1,5 +1,6 @@
 package com.signalwatch.app.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.signalwatch.app.data.api.ApiException
@@ -39,6 +40,11 @@ class MainViewModel @Inject constructor(
     val settings: StateFlow<Settings?> = settingsRepo.current
     val quotaUsed: StateFlow<Int> = quota.usedToday.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    /** Video ID -> videos.list status.embeddable, for streams checked this session. */
+    private val _embeddable = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val embeddable: StateFlow<Map<String, Boolean>> = _embeddable.asStateFlow()
+    private val embedChecked = mutableSetOf<String>()
+
     private val _handleStatus = MutableStateFlow<HandleStatus>(HandleStatus.Idle)
     val handleStatus: StateFlow<HandleStatus> = _handleStatus.asStateFlow()
 
@@ -63,6 +69,24 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** Once per stream: log whether the owner allows embedding, so the player can fall back early if not. */
+    fun checkEmbed(videoId: String) {
+        if (!embedChecked.add(videoId)) return
+        viewModelScope.launch {
+            try {
+                val s = repo.embedStatus(videoId)
+                Log.i(
+                    PLAYER_TAG,
+                    "videos.list $videoId: status.embeddable=${s.embeddable}, " +
+                        "regionRestriction allowed=${s.regionAllowed} blocked=${s.regionBlocked}",
+                )
+                s.embeddable?.let { e -> _embeddable.value += videoId to e }
+            } catch (e: Exception) {
+                Log.w(PLAYER_TAG, "videos.list $videoId status check failed", e)
+            }
+        }
+    }
+
     fun setGoLiveAlert(on: Boolean) = launch { settingsRepo.setGoLiveAlert(on) }
     fun setSignalAlerts(on: Boolean) = launch { settingsRepo.setSignalAlerts(on) }
     fun setTrust(level: TrustLevel) = launch { settingsRepo.setTrust(level) }
@@ -73,6 +97,10 @@ class MainViewModel @Inject constructor(
 
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
+    }
+
+    companion object {
+        const val PLAYER_TAG = "SignalWatchPlayer"
     }
 
     private fun normalizeHandle(input: String): String? {

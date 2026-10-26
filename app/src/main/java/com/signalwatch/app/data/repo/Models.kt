@@ -4,6 +4,9 @@ import java.time.Instant
 
 data class ChannelInfo(val id: String, val title: String, val thumbUrl: String?, val uploadsPlaylistId: String?)
 
+/** From videos.list status + contentDetails: may the stream play in an embedded player, and where. */
+data class EmbedStatus(val embeddable: Boolean?, val regionAllowed: List<String>?, val regionBlocked: List<String>?)
+
 data class LiveVideo(
     val videoId: String,
     val title: String,

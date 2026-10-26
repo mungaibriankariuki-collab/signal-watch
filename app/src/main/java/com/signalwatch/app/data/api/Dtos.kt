@@ -57,6 +57,21 @@ data class VideoItem(
     val id: String,
     val snippet: VideoSnippet? = null,
     val liveStreamingDetails: LiveStreamingDetails? = null,
+    val status: VideoStatus? = null,
+    val contentDetails: VideoContentDetails? = null,
+)
+
+@Serializable
+data class VideoStatus(val embeddable: Boolean? = null)
+
+@Serializable
+data class VideoContentDetails(val regionRestriction: RegionRestriction? = null)
+
+/** Country codes; YouTube sends either an allow list or a block list. */
+@Serializable
+data class RegionRestriction(
+    val allowed: List<String>? = null,
+    val blocked: List<String>? = null,
 )
 
 @Serializable

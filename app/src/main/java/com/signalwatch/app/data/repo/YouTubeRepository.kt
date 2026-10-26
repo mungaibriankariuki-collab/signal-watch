@@ -50,6 +50,13 @@ class YouTubeRepository @Inject constructor(
     suspend fun video(videoId: String): LiveVideo? =
         call(QuotaTracker.COST_VIDEOS_LIST) { api.videos(videoId) }.items.firstOrNull()?.toLiveVideo()
 
+    /** videos.list?part=status,contentDetails (1 unit), once per stream, for the in-app player. */
+    suspend fun embedStatus(videoId: String): EmbedStatus {
+        val item = call(QuotaTracker.COST_VIDEOS_LIST) { api.videos(videoId, part = "status,contentDetails") }.items.firstOrNull()
+        val region = item?.contentDetails?.regionRestriction
+        return EmbedStatus(item?.status?.embeddable, region?.allowed, region?.blocked)
+    }
+
     suspend fun chatPage(liveChatId: String, pageToken: String?): ChatPage {
         val response = call(QuotaTracker.COST_LIVE_CHAT_MESSAGES_LIST) {
             api.liveChatMessages(liveChatId, pageToken)
